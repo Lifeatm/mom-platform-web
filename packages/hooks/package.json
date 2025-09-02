@@ -1,0 +1,21 @@
+{
+	"name": "@lifeatm/hooks",
+	"version": "1.0.5",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"typesVersions": {
+		"*": {
+			"*": [
+				"./src/*"
+			]
+		}
+	},
+	"dependencies": {},
+	"peerDependencies": {
+		"vue": "^3.4.0",
+		"@lifeatm/utils": "workspace:*",
+		"@lifeatm/axios": "workspace:*",
+		"@vueuse/core": "^12.2.0"
+	}
+}

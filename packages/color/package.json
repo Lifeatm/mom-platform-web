@@ -1,0 +1,17 @@
+{
+	"name": "@lifeatm/color",
+	"version": "1.0.5",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"typesVersions": {
+		"*": {
+			"*": [
+				"./src/*"
+			]
+		}
+	},
+	"dependencies": {
+		"colord": "2.9.3"
+	}
+}

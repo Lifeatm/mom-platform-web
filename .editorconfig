@@ -1,0 +1,29 @@
+# 一种配置文件，用于帮助开发团队在不同的编辑器和 IDE 中保持代码风格的一致性。
+# 它定义了文件的格式化规则，比如缩进风格、缩进大小、编码格式等，从而避免因为
+# 开发者个人编辑器配置不同而导致的代码格式差异
+
+# 指定这是 EditorConfig 文件
+root = true
+
+# 通用规则，适用于所有文件
+[*]
+# 文件编码，设置为 UTF-8
+charset = utf-8
+# 使用空格缩进
+indent_style = space
+# 缩进大小为 2 个空格
+indent_size = 2
+# 换行符使用 LF
+end_of_line = lf
+# 文件末尾插入空行
+insert_final_newline = true
+# 删除行尾多余空格
+trim_trailing_whitespace = true
+
+# 特殊规则，针对 Markdown 文件
+[*.md]
+trim_trailing_whitespace = false  # Markdown 文件保留行尾空格
+
+# 特殊规则，针对 Makefile 文件
+[Makefile]
+indent_style = tab            # Makefile 文件使用 Tab 缩进
