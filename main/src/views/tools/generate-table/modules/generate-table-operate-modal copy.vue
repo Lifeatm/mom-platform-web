@@ -1,5 +1,4 @@
-<script setup lang="tsx" name="GenerateTableOperateModalPage">
-	/* ====================================== 1. 依赖导入 ====================================== */
+<script setup lang="tsx">
 	import { computed, reactive, ref, shallowRef, watch } from 'vue'
 	import { NButton, NFormItemGi, NInput, NSelect, NSpace, NSwitch } from 'naive-ui'
 	import { useLoading } from '@lifeatm/hooks'
@@ -23,24 +22,24 @@
 	import { downloadBlob } from '@/utils/download'
 	import { getPrefix } from './shared'
 
-	/* ====================================== 2. 类型定义 ====================================== */
+	defineOptions({
+		name: 'GenerateTableOperateModalPage'
+	})
+
 	interface Props {
 		id?: string
 		tableName?: string | null
 		operateType: NaiveUI.TableOperateType
 	}
 
-	type Model = Api.Tools.GeneratorTableEdit
-	type TableColumnModel = Api.Tools.GeneratorTableColumnEdit
-	type RuleKey = Extract<keyof Model, 'tableName' | 'parentPackage' | 'moduleName' | 'author'>
-
-	/* ====================================== 3. Props 和 Emits 定义 ====================================== */
 	const props = defineProps<Props>()
 
-	/* ====================================== 4. 响应式变量声明 ====================================== */
 	const appStore = useAppStore()
+
 	const { hasAuth } = useAuth()
+
 	const { loading, startLoading, endLoading } = useLoading()
+
 	const { formRef, validate } = useNaiveForm()
 	const { defaultRequiredRule } = useFormRules()
 
@@ -48,33 +47,6 @@
 		default: false
 	})
 
-	/** 当前选项卡索引 */
-	const tabIndex = ref(1)
-
-	/** 是否已保存 */
-	const hasSaved = ref(false)
-
-	/** 编辑模型 */
-	const model: Model = reactive(createDefaultModel())
-
-	/** 表格数据 */
-	const tableData = ref<Api.Tools.GeneratorTableColumnEdit[]>([])
-
-	/** 字典选项 */
-	const tableDictOptions = shallowRef<CommonType.Option[]>([])
-
-	/** 启用的数据表选项 */
-	const dataTableOptions = shallowRef<Api.Tools.DataTable[]>([])
-
-	/** 验证规则 */
-	const rules: Record<RuleKey, App.Global.FormRule> = {
-		tableName: defaultRequiredRule,
-		parentPackage: defaultRequiredRule,
-		moduleName: defaultRequiredRule,
-		author: defaultRequiredRule
-	}
-	/* ====================================== 5. 计算属性 ====================================== */
-	/** 对话框标题 */
 	const title = computed(() => {
 		const titles: Record<NaiveUI.TableOperateType, string> = {
 			add: $t('page.tools.generateTable.addGenerate'),
@@ -83,18 +55,30 @@
 		return titles[props.operateType]
 	})
 
-	/** 是否为编辑模式 */
+	/** current tab index */
+	const tabIndex = ref(1)
+
+	/** current operate type */
+	// const currentOperateType = ref<NaiveUI.TableOperateType>(props.operateType);
+
+	/** has saved */
+	const hasSaved = ref(false)
+
+	/** is edit */
 	const isEdit = computed(() => props.operateType === 'edit' || hasSaved.value)
 
-	/* ====================================== 6. 函数定义 ====================================== */
-	/** 创建默认模型 */
+	/** edit model */
+	type Model = Api.Tools.GeneratorTableEdit
+
+	const model: Model = reactive(createDefaultModel())
+
 	function createDefaultModel(): Model {
 		return {
 			id: '0',
 			tableName: null,
 			tableComment: '',
 			tablePrefix: '',
-			parentPackage: 'com.lifeatm',
+			parentPackage: 'com.izpan',
 			moduleName: '',
 			parentMenuId: 0,
 			author: '',
@@ -102,13 +86,40 @@
 		}
 	}
 
-	/**
-	 * 初始化模型
-	 */
+	type TableColumnModel = Api.Tools.GeneratorTableColumnEdit
+
+	/** table data */
+	const tableData = ref<Api.Tools.GeneratorTableColumnEdit[]>([])
+
+	/** dict options */
+	const tableDictOptions = shallowRef<CommonType.Option[]>([])
+
+	/** the enabled role options */
+	const dataTableOptions = shallowRef<Api.Tools.DataTable[]>([])
+
+	/** rules */
+	type RuleKey = Extract<keyof Model, 'tableName' | 'parentPackage' | 'moduleName' | 'author'>
+	const rules: Record<RuleKey, App.Global.FormRule> = {
+		tableName: defaultRequiredRule,
+		parentPackage: defaultRequiredRule,
+		moduleName: defaultRequiredRule,
+		author: defaultRequiredRule
+	}
+
+	/** init model */
 	async function handleInitModel() {
 		tabIndex.value = 1
 		Object.assign(model, createDefaultModel())
-		if (props.id) {
+
+		if (props.operateType === 'add') {
+			const { error, data } = await fetchGetAllDataTable()
+			if (!error) {
+				hasSaved.value = false
+				dataTableOptions.value = data
+			}
+		}
+
+		if (props.operateType === 'edit' && props.id) {
 			const { error, data } = await fetchGetEditGeneratorTable(props.id)
 			if (!error) {
 				Object.assign(model, data)
@@ -116,9 +127,7 @@
 		}
 	}
 
-	/**
-	 * 获取所有字典列表
-	 */
+	/** get all dict list */
 	async function initAllDictList() {
 		const { error, data } = await fetchGetAllDictOptionsList()
 		if (!error) {
@@ -126,7 +135,7 @@
 		}
 	}
 
-	// 表格列配置
+	// columns
 	const columns: NaiveUI.TableColumn<Api.Tools.GeneratorTableColumnEdit>[] = [
 		{
 			key: 'ordinalPosition',
@@ -261,29 +270,34 @@
 	]
 
 	/**
-	 * 表名选项点击事件
+	 * table name options click
 	 *
-	 * @param value 表名
-	 * @param option 表名对象
+	 * @param value table name
+	 * @param option table name object
 	 */
 	async function hanldeClickTableNameOptions(value: string, option: Api.Tools.DataTable) {
 		model.tableComment = option.tableComment
 		model.tablePrefix = getPrefix(value)
 	}
 
-	/** 下一步 */
+	/** tabs previous */
+	function handlePrevious() {
+		tabIndex.value -= 1
+	}
+
+	/** tabs next */
 	async function handleNext() {
 		if (tabIndex.value === 1) {
 			await validate()
 			tabIndex.value += 1
 			startLoading()
-			// 保存或更新表信息
+			// save or update table info
 			const func = isEdit.value ? fetchUpdateGeneratorTableInfo : fetchAddGeneratorTable
 			func(model)
 				.then(({ error, data }) => {
 					if (!error) {
 						Object.assign(model, data)
-						// 保存成功后始终设置为编辑模式
+						// Always set to 'edit' after successful save
 						hasSaved.value = true
 						// currentOperateType.value = 'edit';
 					}
@@ -303,7 +317,7 @@
 		}
 	}
 
-	/** 清空表字段 */
+	/** clean table columns */
 	async function handleCleanTableColumns() {
 		window.$dialog?.error({
 			title: $t('page.tools.generateTableColumn.cleanColumns'),
@@ -320,7 +334,7 @@
 		})
 	}
 
-	/** 同步数据库字段 */
+	/** sync database columns */
 	async function handleSyncDatabaseColumns() {
 		window.$dialog?.warning({
 			title: $t('page.tools.generateTableColumn.syncColumns'),
@@ -337,7 +351,7 @@
 		})
 	}
 
-	/** 代码生成 */
+	/** code generate */
 	async function handleCodeGenerate() {
 		const { error, response } = await fetchZipCodeGenerate(model.id)
 		if (!error && response) {
@@ -346,7 +360,6 @@
 		}
 	}
 
-	/* ====================================== 7. 监听器初始化函数（watch） ====================================== */
 	watch(visible, () => {
 		if (visible.value) {
 			handleInitModel()
@@ -359,24 +372,33 @@
 	<NModal v-model:show="visible" :title="title" preset="card" class="h-[80vh] w-4/5">
 		<NTabs v-model:value="tabIndex" type="line" animate size="small" class="h-full">
 			<NTabPane :name="1" :tab="$t('page.tools.generateTableColumn.baseInfo')">
-				<NForm ref="formRef" label-placement="left" :label-width="120" :model="model" :rules="rules">
-					<NGrid :cols="24" :x-gap="24" :y-gap="8" justify="center">
-						<NFormItemGi span="12" label="表名称" path="tableComment">
-							<NInput v-model:value="model.tableName" placeholder="表名称" />
+				<NForm ref="formRef" label-placement="left" :label-width="80" :model="model" :rules="rules">
+					<NGrid :x-gap="8" :y-gap="8">
+						<NFormItemGi span="8 m:6" :label="$t('page.tools.generateTable.tableName')" path="tableName">
+							<NSelect
+								v-model:value="model.tableName"
+								filterable
+								clearable
+								label-field="tableName"
+								value-field="tableName"
+								:options="dataTableOptions"
+								:placeholder="$t('page.tools.generateTable.form.tableNameSelect')"
+								:disabled="isEdit"
+								@update:value="hanldeClickTableNameOptions" />
 						</NFormItemGi>
-						<NFormItemGi span="12" :label="$t('page.tools.generateTable.tableComment')" path="tableComment">
+						<NFormItemGi span="8 m:6" :label="$t('page.tools.generateTable.tableComment')" path="tableComment">
 							<NInput v-model:value="model.tableComment" :placeholder="$t('page.tools.generateTable.form.tableComment')" :disabled="isEdit" />
 						</NFormItemGi>
-						<NFormItemGi span="12" :label="$t('page.tools.generateTable.tablePrefix')" path="tablePrefix">
+						<NFormItemGi span="8 m:6" :label="$t('page.tools.generateTable.tablePrefix')" path="tablePrefix">
 							<NInput v-model:value="model.tablePrefix" :placeholder="$t('page.tools.generateTable.form.tablePrefix')" :disabled="isEdit" />
 						</NFormItemGi>
-						<NFormItemGi span="12" :label="$t('page.tools.generateTable.parentPackage')" path="parentPackage">
+						<NFormItemGi span="8 m:6" :label="$t('page.tools.generateTable.parentPackage')" path="parentPackage">
 							<NInput v-model:value="model.parentPackage" :placeholder="$t('page.tools.generateTable.form.parentPackage')" />
 						</NFormItemGi>
-						<NFormItemGi span="12" :label="$t('page.tools.generateTable.moduleName')" path="moduleName">
+						<NFormItemGi span="8 m:6" :label="$t('page.tools.generateTable.moduleName')" path="moduleName">
 							<NInput v-model:value="model.moduleName" :placeholder="$t('page.tools.generateTable.form.moduleName')" />
 						</NFormItemGi>
-						<NFormItemGi span="12" :label="$t('page.tools.generateTable.author')" path="author">
+						<NFormItemGi span="8 m:6" :label="$t('page.tools.generateTable.author')" path="author">
 							<NInput v-model:value="model.author" :placeholder="$t('page.tools.generateTable.form.author')" />
 						</NFormItemGi>
 					</NGrid>
@@ -415,9 +437,9 @@
 		</NTabs>
 		<template #footer>
 			<NSpace justify="end">
-				<!-- <NButton v-if="tabIndex > 1 && tabIndex <= 2" type="tertiary" @click="handlePrevious">
+				<NButton v-if="tabIndex > 1 && tabIndex <= 2" type="tertiary" @click="handlePrevious">
 					{{ $t('page.tools.generateTableColumn.previous') }}
-				</NButton> -->
+				</NButton>
 				<NButton v-if="tabIndex <= 2" type="primary" :disabled="tableData.length === 0 && tabIndex === 2" @click="handleNext">
 					{{ $t('page.tools.generateTableColumn.next') }}
 				</NButton>

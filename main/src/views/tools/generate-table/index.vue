@@ -229,7 +229,7 @@
 				:pagination="mobilePagination" />
 		</NCard>
 		<GenerateTableOperateModal :id="editingData?.id" v-model:visible="modalVisible" :operate-type="operateType" :table-name="editingData?.tableName" />
-		<GenerateTableImport v-if="showDialog" v-model:visible="showDialog" />
+		<GenerateTableImport v-if="showDialog" v-model:visible="showDialog" @import-success="getData" />
 		<NModal v-model:show="previewVisible" title="预览代码" preset="card" class="w-4/5">
 			<NTabs v-model:value="previewActiveName" type="line" animated size="small">
 				<NTabPane

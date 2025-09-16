@@ -12,7 +12,7 @@
 			:flex-height="!appStore.isMobile"
 			:loading="loading"
 			:single-line="false"
-			:row-key="(row: TableColumn) => row.id"
+			:row-key="(row: TableColumn) => row.tableName"
 			:pagination="mobilePagination" />
 		<template #footer>
 			<NFlex justify="end">
@@ -32,11 +32,15 @@
 
 	const appStore = useAppStore()
 
-	type TableColumn = Api.Tools.GeneratorTableColumn
+	type TableColumn = Api.Tools.DataTable
 
 	defineOptions({
 		name: 'GenerateTableImport'
 	})
+
+	const emit = defineEmits<{
+		importSuccess: []
+	}>()
 
 	const visible = defineModel<boolean>('visible', {
 		default: false
@@ -45,6 +49,9 @@
 	watch(visible, () => {
 		if (visible.value) {
 			getData()
+		} else {
+			// 关闭模态框时重置选中状态
+			checkedRowKeys.value = []
 		}
 	})
 
@@ -93,22 +100,24 @@
 		]
 	})
 
-	const { checkedRowKeys, getCheckedFieldValues, editingData, operateType, onDeleted, onBatchDeleted } = useTableOperate(data, getData)
+	const { checkedRowKeys, editingData, operateType, onDeleted, onBatchDeleted } = useTableOperate(data, getData)
 
 	/**
 	 * 导入表
 	 */
 	async function handleImport() {
-		console.log()
-		const tableNames: string[] = getCheckedFieldValues('tableName').filter((name): name is string => !!name)
-		if (tableNames.length === 0) {
+		if (checkedRowKeys.value.length === 0) {
 			window.$message?.warning('请至少选择一张表')
 			return
 		}
-		const { error, data: result } = await importGenTable(tableNames)
+		const { error, data: result } = await importGenTable(checkedRowKeys.value)
 		if (!error && result) {
 			window.$message?.success('导入成功')
-			// visible.value = false
+			// 导入成功后关闭模态框并重置选中状态tool_generator_table/importGenTable
+			visible.value = false
+			checkedRowKeys.value = []
+			// 通知父组件刷新表格数据
+			emit('importSuccess')
 		}
 	}
 </script>
